@@ -207,6 +207,121 @@
     font-size: 12px;
     color: var(--mute);
   }
+
+  .chat-card {
+    background: var(--canvas);
+    border-radius: 16px;
+    padding: 24px;
+    box-shadow: rgba(0, 0, 0, 0.12) 0px 4px 16px 0px;
+    width: 100%;
+    max-width: 480px;
+    margin: 0 16px 32px;
+  }
+  .chat-card h2 {
+    font-family: var(--display-font);
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 28px;
+    margin: 0 0 4px;
+  }
+  .chat-card .chat-caption {
+    font-family: var(--text-font);
+    font-size: 12px;
+    line-height: 20px;
+    color: var(--mute);
+    margin: 0 0 16px;
+  }
+
+  .chat-log {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .chat-bubble {
+    max-width: 88%;
+    padding: 12px 16px;
+    border-radius: 16px;
+    font-family: var(--text-font);
+    font-size: 14px;
+    line-height: 20px;
+    white-space: pre-line;
+  }
+  .chat-bubble.bot {
+    align-self: flex-start;
+    background: var(--canvas-soft);
+    color: var(--ink);
+    border-bottom-left-radius: 4px;
+  }
+  .chat-bubble.user {
+    align-self: flex-end;
+    background: var(--primary);
+    color: var(--on-primary);
+    border-bottom-right-radius: 4px;
+  }
+  .chat-bubble .pillar-row {
+    font-weight: 500;
+  }
+
+  .saju-balls {
+    display: flex;
+    justify-content: flex-start;
+    gap: 6px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .ball.saju {
+    width: 36px;
+    height: 36px;
+    font-size: 13px;
+  }
+  .plus-sign.saju {
+    font-size: 16px;
+  }
+
+  .redraw-btn {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 8px 16px;
+    font-family: var(--text-font);
+    font-size: 13px;
+    font-weight: 500;
+    border: none;
+    border-radius: 9999px;
+    background: var(--canvas);
+    color: var(--ink);
+    border: 1px solid var(--surface-pressed);
+    cursor: pointer;
+  }
+  .redraw-btn:hover { background: var(--canvas-softer); }
+
+  .saju-form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .saju-form .field-row {
+    display: flex;
+    gap: 8px;
+  }
+  .saju-form label {
+    font-family: var(--text-font);
+    font-size: 12px;
+    color: var(--body);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .saju-form input[type="date"],
+  .saju-form select {
+    width: 100%;
+    background: var(--canvas-soft);
+    color: var(--ink);
+    font-family: var(--text-font);
+    font-size: 14px;
+    border: none;
+    border-radius: 8px;
+    padding: 12px;
+  }
 </style>
 </head>
 <body>
@@ -222,6 +337,41 @@
     <button class="draw-btn" id="drawBtn">번호 뽑기</button>
 
     <div class="history" id="history"></div>
+  </div>
+
+  <div class="chat-card">
+    <h2>사주 기반 번호 추천</h2>
+    <p class="chat-caption">생년월일과 태어난 시간을 입력하면 사주를 분석해 번호를 추천해드려요. (재미로 보는 콘텐츠입니다)</p>
+
+    <div class="chat-log" id="chatLog">
+      <div class="chat-bubble bot">생년월일과 태어난 시간을 입력해주시면 사주를 풀이해서 번호를 추천해드릴게요 🔮</div>
+    </div>
+
+    <form class="saju-form" id="sajuForm">
+      <div>
+        <label for="birthDate">생년월일</label>
+        <input type="date" id="birthDate" required>
+      </div>
+      <div>
+        <label for="birthTime">태어난 시간</label>
+        <select id="birthTime">
+          <option value="unknown">모름</option>
+          <option value="23">자시 (23:00~00:59)</option>
+          <option value="1">축시 (01:00~02:59)</option>
+          <option value="3">인시 (03:00~04:59)</option>
+          <option value="5">묘시 (05:00~06:59)</option>
+          <option value="7">진시 (07:00~08:59)</option>
+          <option value="9">사시 (09:00~10:59)</option>
+          <option value="11">오시 (11:00~12:59)</option>
+          <option value="13">미시 (13:00~14:59)</option>
+          <option value="15">신시 (15:00~16:59)</option>
+          <option value="17">유시 (17:00~18:59)</option>
+          <option value="19">술시 (19:00~20:59)</option>
+          <option value="21">해시 (21:00~22:59)</option>
+        </select>
+      </div>
+      <button type="submit" class="draw-btn">사주 분석하기</button>
+    </form>
   </div>
 
 <script>
@@ -337,6 +487,202 @@
 
   drawBtn.addEventListener('click', draw);
   draw();
+
+  // ─── Saju (four pillars) based recommendation ───
+
+  const STEMS = ['갑', '을', '병', '정', '무', '기', '경', '신', '임', '계'];
+  const STEM_HANJA = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
+  const STEM_ELEM = ['목', '목', '화', '화', '토', '토', '금', '금', '수', '수'];
+  const BRANCHES = ['자', '축', '인', '묘', '진', '사', '오', '미', '신', '유', '술', '해'];
+  const BRANCH_HANJA = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
+  const BRANCH_ELEM = ['수', '토', '목', '목', '토', '화', '화', '토', '금', '금', '토', '수'];
+
+  const ELEM_BLURB = {
+    목: '성장과 확장의 기운이 두드러집니다. 새로운 시작에 어울리는 번호를 골랐어요.',
+    화: '열정과 활력이 넘치는 기운입니다. 과감한 도전 운이 담긴 번호예요.',
+    토: '안정과 신뢰의 기운이 강합니다. 꾸준함이 빛을 발할 번호입니다.',
+    금: '결단력과 결실의 기운이 두드러집니다. 마무리 운이 좋은 번호예요.',
+    수: '지혜와 유연함의 기운이 흐릅니다. 흐름을 타는 번호를 골랐어요.'
+  };
+  const ELEM_ORDER = ['목', '화', '토', '금', '수'];
+
+  function jdnFromDate(y, m, d) {
+    const a = Math.floor((14 - m) / 12);
+    const yy = y + 4800 - a;
+    const mm = m + 12 * a - 3;
+    return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+  }
+
+  function computeSaju(year, month, day, hour) {
+    const yIdx60 = ((year - 4) % 60 + 60) % 60;
+    const yStem = yIdx60 % 10;
+    const yBranch = yIdx60 % 12;
+
+    const jdn = jdnFromDate(year, month, day);
+    const dStem = ((jdn + 9) % 10 + 10) % 10;
+    const dBranch = ((jdn + 1) % 12 + 12) % 12;
+
+    const mBranch = month % 12;
+    const steps = ((mBranch - 2) % 12 + 12) % 12;
+    const mBase = (2 + 2 * (yStem % 5)) % 10;
+    const mStem = (mBase + steps) % 10;
+
+    let tStem = null, tBranch = null;
+    if (hour !== null) {
+      tBranch = Math.floor(((hour + 1) % 24) / 2);
+      const tBase = (2 * (dStem % 5)) % 10;
+      tStem = (tBase + tBranch) % 10;
+    }
+
+    return { yStem, yBranch, mStem, mBranch, dStem, dBranch, tStem, tBranch };
+  }
+
+  function pillarLabel(stemIdx, branchIdx) {
+    return `${STEMS[stemIdx]}${BRANCHES[branchIdx]}(${STEM_HANJA[stemIdx]}${BRANCH_HANJA[branchIdx]})`;
+  }
+
+  function elementCounts(saju) {
+    const counts = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+    counts[STEM_ELEM[saju.yStem]]++;
+    counts[BRANCH_ELEM[saju.yBranch]]++;
+    counts[STEM_ELEM[saju.mStem]]++;
+    counts[BRANCH_ELEM[saju.mBranch]]++;
+    counts[STEM_ELEM[saju.dStem]]++;
+    counts[BRANCH_ELEM[saju.dBranch]]++;
+    if (saju.tStem !== null) {
+      counts[STEM_ELEM[saju.tStem]]++;
+      counts[BRANCH_ELEM[saju.tBranch]]++;
+    }
+    return counts;
+  }
+
+  function mulberry32(seed) {
+    let a = seed;
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  function weightedDraw(rng, weights, count) {
+    const pool = weights.map((w, i) => ({ num: i + 1, w }));
+    const picked = [];
+    for (let k = 0; k < count; k++) {
+      const total = pool.reduce((s, p) => s + p.w, 0);
+      let r = rng() * total;
+      let idx = 0;
+      for (; idx < pool.length - 1; idx++) {
+        r -= pool[idx].w;
+        if (r <= 0) break;
+      }
+      picked.push(pool[idx].num);
+      pool.splice(idx, 1);
+    }
+    return picked;
+  }
+
+  function recommendFromSaju(saju, nonce) {
+    const counts = elementCounts(saju);
+    const dominant = ELEM_ORDER.reduce((a, b) => (counts[b] > counts[a] ? b : a));
+
+    // 1-45 split into 5 contiguous groups mapped to the five elements; the dominant
+    // and its neighbouring element get boosted draw weight.
+    const weights = new Array(45).fill(1);
+    ELEM_ORDER.forEach((elem, gi) => {
+      const start = gi * 9;
+      const boost = elem === dominant ? 3 : 1;
+      for (let i = start; i < start + 9; i++) weights[i] *= boost;
+    });
+
+    const seedBase = saju.yStem * 100000 + saju.yBranch * 10000 + saju.mStem * 1000 +
+      saju.mBranch * 100 + saju.dStem * 10 + saju.dBranch + (saju.tStem === null ? 0 : saju.tStem * 7 + saju.tBranch);
+    const rng = mulberry32((seedBase * 2654435761 + nonce * 97) >>> 0);
+
+    const picks = weightedDraw(rng, weights, 7);
+    const main = picks.slice(0, 6).sort((a, b) => a - b);
+    const bonus = picks[6];
+
+    return { main, bonus, dominant, counts };
+  }
+
+  function renderSajuBalls(container, main, bonus) {
+    container.innerHTML = '';
+    main.forEach(n => {
+      const ball = document.createElement('div');
+      ball.className = 'ball saju ' + toneClass(n);
+      ball.textContent = n;
+      container.appendChild(ball);
+    });
+    const plus = document.createElement('span');
+    plus.className = 'plus-sign saju';
+    plus.textContent = '+';
+    container.appendChild(plus);
+    const bonusBall = document.createElement('div');
+    bonusBall.className = 'ball saju bonus';
+    bonusBall.textContent = bonus;
+    container.appendChild(bonusBall);
+  }
+
+  const chatLog = document.getElementById('chatLog');
+  const sajuForm = document.getElementById('sajuForm');
+
+  function appendBubble(role) {
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble ' + role;
+    chatLog.appendChild(bubble);
+    return bubble;
+  }
+
+  function renderSajuResult(bubble, saju, result, attempt) {
+    bubble.innerHTML = '';
+
+    const text = document.createElement('div');
+    const timePart = saju.tStem === null ? '' : ` · 시주: ${pillarLabel(saju.tStem, saju.tBranch)}`;
+    text.innerHTML =
+      `<div class="pillar-row">년주: ${pillarLabel(saju.yStem, saju.yBranch)} · 월주: ${pillarLabel(saju.mStem, saju.mBranch)} · 일주: ${pillarLabel(saju.dStem, saju.dBranch)}${timePart}</div>` +
+      `<div style="margin-top:6px;">오행 분포 — 목:${result.counts.목} 화:${result.counts.화} 토:${result.counts.토} 금:${result.counts.금} 수:${result.counts.수}</div>` +
+      `<div style="margin-top:6px;">${ELEM_BLURB[result.dominant]}</div>`;
+    bubble.appendChild(text);
+
+    const ballsWrap = document.createElement('div');
+    ballsWrap.className = 'saju-balls';
+    renderSajuBalls(ballsWrap, result.main, result.bonus);
+    bubble.appendChild(ballsWrap);
+
+    const redrawBtn = document.createElement('button');
+    redrawBtn.type = 'button';
+    redrawBtn.className = 'redraw-btn';
+    redrawBtn.textContent = '이 사주로 다시 추천받기';
+    redrawBtn.addEventListener('click', () => {
+      const nextAttempt = attempt + 1;
+      const nextResult = recommendFromSaju(saju, nextAttempt);
+      renderSajuResult(bubble, saju, nextResult, nextAttempt);
+    });
+    bubble.appendChild(redrawBtn);
+  }
+
+  sajuForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+
+    const dateVal = document.getElementById('birthDate').value;
+    if (!dateVal) return;
+    const [year, month, day] = dateVal.split('-').map(Number);
+
+    const timeVal = document.getElementById('birthTime').value;
+    const hour = timeVal === 'unknown' ? null : Number(timeVal);
+    const timeOptionText = document.getElementById('birthTime').selectedOptions[0].textContent;
+
+    const userBubble = appendBubble('user');
+    userBubble.textContent = `생년월일: ${year}년 ${month}월 ${day}일\n태어난 시간: ${timeOptionText}`;
+
+    const saju = computeSaju(year, month, day, hour);
+    const result = recommendFromSaju(saju, 0);
+
+    const botBubble = appendBubble('bot');
+    renderSajuResult(botBubble, saju, result, 0);
+  });
 </script>
 </body>
 </html>

@@ -635,6 +635,31 @@
     return bubble;
   }
 
+  async function fetchInterpretation(saju, result) {
+    const timeLabel = saju.tStem === null ? null : pillarLabel(saju.tStem, saju.tBranch);
+    try {
+      const res = await fetch('/api/saju', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pillars: {
+            year: pillarLabel(saju.yStem, saju.yBranch),
+            month: pillarLabel(saju.mStem, saju.mBranch),
+            day: pillarLabel(saju.dStem, saju.dBranch),
+            time: timeLabel,
+          },
+          counts: result.counts,
+          dominant: result.dominant,
+        }),
+      });
+      if (!res.ok) throw new Error('bad response');
+      const data = await res.json();
+      return data.text || ELEM_BLURB[result.dominant];
+    } catch (err) {
+      return ELEM_BLURB[result.dominant];
+    }
+  }
+
   function renderSajuResult(bubble, saju, result, attempt) {
     bubble.innerHTML = '';
 
@@ -642,9 +667,14 @@
     const timePart = saju.tStem === null ? '' : ` · 시주: ${pillarLabel(saju.tStem, saju.tBranch)}`;
     text.innerHTML =
       `<div class="pillar-row">년주: ${pillarLabel(saju.yStem, saju.yBranch)} · 월주: ${pillarLabel(saju.mStem, saju.mBranch)} · 일주: ${pillarLabel(saju.dStem, saju.dBranch)}${timePart}</div>` +
-      `<div style="margin-top:6px;">오행 분포 — 목:${result.counts.목} 화:${result.counts.화} 토:${result.counts.토} 금:${result.counts.금} 수:${result.counts.수}</div>` +
-      `<div style="margin-top:6px;">${ELEM_BLURB[result.dominant]}</div>`;
+      `<div style="margin-top:6px;">오행 분포 — 목:${result.counts.목} 화:${result.counts.화} 토:${result.counts.토} 금:${result.counts.금} 수:${result.counts.수}</div>`;
     bubble.appendChild(text);
+
+    const interpretationEl = document.createElement('div');
+    interpretationEl.style.marginTop = '6px';
+    interpretationEl.style.color = 'var(--body)';
+    interpretationEl.textContent = '해석을 생성하는 중...';
+    bubble.appendChild(interpretationEl);
 
     const ballsWrap = document.createElement('div');
     ballsWrap.className = 'saju-balls';
@@ -661,6 +691,11 @@
       renderSajuResult(bubble, saju, nextResult, nextAttempt);
     });
     bubble.appendChild(redrawBtn);
+
+    fetchInterpretation(saju, result).then(interpretation => {
+      interpretationEl.textContent = interpretation;
+      interpretationEl.style.color = '';
+    });
   }
 
   sajuForm.addEventListener('submit', (e) => {
